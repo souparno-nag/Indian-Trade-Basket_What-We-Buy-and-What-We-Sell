@@ -3,7 +3,7 @@
 tradestat.py - download and label TradeStat (Dept. of Commerce, India) Excel reports.
 
 Setup (once):
-    pip install playwright openpyxl pandas
+    pip install playwright openpyxl
     playwright install chromium
 
 Commands:
