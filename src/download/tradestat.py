@@ -2,18 +2,23 @@
 """
 tradestat.py - download and label TradeStat (Dept. of Commerce, India) Excel reports.
 
-Setup (once):
-    pip install playwright openpyxl
+Setup (once, from the project root):
+    pip install -r requirements.txt
     playwright install chromium
 
-Commands:
-    python tradestat.py inspect                 # dump the query form's fields to form_fields.json
-    python tradestat.py assist  [-o data/raw]       # you submit queries by hand; every download is saved + labelled
-    python tradestat.py auto    [-o data/raw]       # loop over FLOWS x YEARS using the form config below
-    python tradestat.py label   folder [-o data/raw] [--copy]  # label xlsx files you already have (moved unless --copy)
+Typical run:
+    python src/download/tradestat.py label data/raw/import   # label files you already have
+    python src/download/tradestat.py auto                    # download FLOWS x YEARS
 
-Files land in ./data/raw/import and ./data/raw/export (by the flow read from each file);
+Commands (paths are relative to the project root; the script works from any directory):
+    auto    [-o data/raw]                  # loop over FLOWS x YEARS using the form config below
+    label   folder [-o data/raw] [--copy]  # label xlsx files you already have (moved unless --copy)
+    assist  [-o data/raw]                  # fallback: you submit queries by hand; every download is saved + labelled
+    inspect                                # only if the site changes: dump the form's fields to data/form_fields.json
+
+Files land in data/raw/import and data/raw/export (by the flow read from each file);
 data/raw/manifest.csv logs every file. Downloads pass through data/raw/_incoming first.
+A re-download with the same data replaces the existing file; revised figures are kept as _v2.
 
 Labelled name:  tradestat_<flow>_<basis>_<period>.xlsx
     e.g.        tradestat_import_commodity-wise_FY2023-24_FY2024-25.xlsx
