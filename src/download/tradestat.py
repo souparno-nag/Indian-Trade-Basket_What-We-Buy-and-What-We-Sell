@@ -178,9 +178,12 @@ def cmd_assist(a):
         print("Every download is saved and labelled automatically. Close the browser window (or Ctrl+C) when done.")
         try:
             pg.wait_for_event("close", timeout=0)
+        except KeyboardInterrupt:
+            print("\ninterrupted")
         except Exception:
             pass
-        write_manifest(man, raw)
+        finally:
+            write_manifest(man, raw)  # always log what was downloaded, even on Ctrl+C
 
 def cmd_auto(a):
     missing = [k for k, v in SELECTORS.items() if not v]
