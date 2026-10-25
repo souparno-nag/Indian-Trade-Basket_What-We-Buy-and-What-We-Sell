@@ -189,25 +189,33 @@ def cmd_auto(a):
     missing = [k for k, v in SELECTORS.items() if not v]
     if missing or not FLOWS:
         sys.exit(f"Fill in SELECTORS ({', '.join(missing)}) and FLOWS at the top of this file first. Run `inspect` to find them.")
-    raw, man = Path(a.out), []
-    with _pw()() as p:
-        b = p.chromium.launch(headless=False)
-        ctx = b.new_context(accept_downloads=True)
-        pg = ctx.new_page()
-        for flow, url in FLOWS.items():
-            for y in YEARS:
-                pg.goto(url)
-                pg.select_option(SELECTORS["year_select"], label=y)
-                pg.select_option(SELECTORS["hs_level_select"], label=HS_LEVEL)
-                pg.select_option(SELECTORS["unit_select"], label=UNIT)
-                pg.click(SELECTORS["submit_button"])
-                pg.wait_for_load_state("networkidle")
-                with pg.expect_download(timeout=120_000) as d:
-                    pg.click(SELECTORS["download_button"])
-                _save_download(d.value, raw, man)
-                time.sleep(2)  # be polite to the server
-        b.close()
-    write_manifest(man, raw)
+    raw, man, failed = Path(a.out), [], []
+    try:
+        with _pw()() as p:
+            b = p.chromium.launch(headless=False)
+            ctx = b.new_context(accept_downloads=True)
+            pg = ctx.new_page()
+            for flow, url in FLOWS.items():
+                for y in YEARS:
+                    try:
+                        pg.goto(url)
+                        pg.select_option(SELECTORS["year_select"], label=y)
+                        pg.select_option(SELECTORS["hs_level_select"], label=HS_LEVEL)
+                        pg.select_option(SELECTORS["unit_select"], label=UNIT)
+                        pg.click(SELECTORS["submit_button"])
+                        pg.wait_for_load_state("networkidle")
+                        with pg.expect_download(timeout=120_000) as d:
+                            pg.click(SELECTORS["download_button"])
+                        _save_download(d.value, raw, man)
+                    except Exception as e:  # one bad query should not abort the whole run
+                        print(f"  ! {flow} {y} failed: {e}")
+                        failed.append((flow, y))
+                    time.sleep(2)  # be polite to the server
+            b.close()
+    finally:
+        write_manifest(man, raw)  # keep a record of whatever did download
+        if failed:
+            print("failed: " + ", ".join(f"{f} {y}" for f, y in failed))
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
