@@ -54,7 +54,8 @@ def _slug(s):
     return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
 
 def read_meta(path) -> dict[str, Any]:
-    """Pull flow, basis, years, HS digits, row count and totals out of a TradeStat xlsx."""
+    """Pull flow, basis, years, HS digits, row count and totals out of a TradeStat xlsx.
+    gap_y1/gap_y2 = reported total minus the sum of the commodity rows (should be ~0)."""
     import openpyxl
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     ws = wb.worksheets[0]
@@ -65,7 +66,7 @@ def read_meta(path) -> dict[str, Any]:
     parts = [p.strip() for p in title.split("->")]
     flow = _slug(parts[2]) if len(parts) > 2 else "unknown"
     basis = _slug(parts[3]) if len(parts) > 3 else "unknown"
-    header, years, hs_len, n, total = None, [], None, 0, [None, None]
+    header, years, hs_len, n, total, sums = None, [], None, 0, [None, None], [0.0, 0.0]
     for r in rows:
         if header is None:
             if r and any(isinstance(c, str) and re.fullmatch(r"\d{4}\s*-\s*\d{4}", c.strip()) for c in r if c):
@@ -77,13 +78,29 @@ def read_meta(path) -> dict[str, Any]:
         if code.isdigit():
             n += 1
             hs_len = hs_len or len(code)
+            for i, v in enumerate((r[3], r[5]) if len(r) > 5 else ()):
+                if isinstance(v, (int, float)):
+                    sums[i] += v
         elif code.lower().startswith("india's total"):
             total = [r[3], r[5]] if len(r) > 5 else total  # year-1 and year-2 value columns
     wb.close()
     m = re.search(r"Report Generated on:\s*([\d/]+)", sub)
     unit = "usd-million" if "Million" in sub else ("usd-billion" if "Billion" in sub else "unknown")
+    gaps = [round(t - s, 2) if isinstance(t, (int, float)) else None for t, s in zip(total, sums)]
     return dict(flow=flow, basis=basis, years=years, hs_digits=hs_len, rows=n,
-                total_y1=total[0], total_y2=total[1], generated=m.group(1) if m else "", unit=unit)
+                total_y1=total[0], total_y2=total[1], gap_y1=gaps[0], gap_y2=gaps[1],
+                generated=m.group(1) if m else "", unit=unit)
+
+def check_totals(meta):
+    """Warnings if the total row is missing or the commodity rows do not add up to it."""
+    warns = []
+    for y in ("y1", "y2"):
+        t, g = meta[f"total_{y}"], meta[f"gap_{y}"]
+        if g is None:
+            warns.append(f"no India's Total value for {y} (truncated download?)")
+        elif abs(g) > 0.001 * abs(t):  # rounding of ~10k rows gives ~1 unit; missing rows give far more
+            warns.append(f"rows sum to {t - g:.2f} but total is {t:.2f} for {y} (gap {g:.2f})")
+    return warns
 
 def label_name(meta):
     yrs = "_".join("FY" + y.split("-")[0] + "-" + y.split("-")[1][-2:] for y in
@@ -114,6 +131,8 @@ def label_file(src, base, manifest, move=False):
         (shutil.move if move else shutil.copy2)(src, dest)
     manifest.append(dict(original=src.name, labelled=dest.name, **meta))
     print(f"  {src.name}  ->  {dest.name}  ({meta['rows']} lines, hs{meta['hs_digits']})")
+    for w in check_totals(meta):
+        print(f"  ! {dest.name}: {w}")
     return dest
 
 def write_manifest(manifest, outdir):
