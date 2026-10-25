@@ -101,6 +101,7 @@ def label_file(src, base, manifest, move=False):
     if dest.exists() and dest.resolve() != src.resolve() and filecmp.cmp(src, dest, shallow=False):
         if move:
             src.unlink()
+        manifest.append(dict(original=src.name, labelled=dest.name, **meta))
         print(f"  {src.name}  ==  {dest.name} (identical, skipped)")
         return dest
     k = 2
@@ -113,15 +114,24 @@ def label_file(src, base, manifest, move=False):
     return dest
 
 def write_manifest(manifest, outdir):
+    """Merge new rows into manifest.csv, keeping one row per labelled file."""
     if not manifest:
         return
     p = Path(outdir) / "manifest.csv"
-    new = not p.exists()
-    with open(p, "a", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=list(manifest[0].keys()))
-        if new:
-            w.writeheader()
-        w.writerows(manifest)
+    rows = {}
+    if p.exists():
+        with open(p, newline="") as f:
+            rows = {r["labelled"]: r for r in csv.DictReader(f)}
+    for r in manifest:
+        old = rows.get(r["labelled"])
+        if old and r["original"] == r["labelled"]:  # re-labelling a labelled file: keep the real original name
+            r = dict(r, original=old["original"])
+        rows[r["labelled"]] = r
+    fields = list(dict.fromkeys(k for r in rows.values() for k in r))
+    with open(p, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=fields)
+        w.writeheader()
+        w.writerows(rows.values())
     print(f"manifest: {p}")
 
 def cmd_label(a):
