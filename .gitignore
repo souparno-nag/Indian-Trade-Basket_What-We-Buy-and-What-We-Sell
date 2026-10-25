@@ -218,3 +218,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# TradeStat downloader: partial downloads awaiting labelling
+data/raw/_incoming/
