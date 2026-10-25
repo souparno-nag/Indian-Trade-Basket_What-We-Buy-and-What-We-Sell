@@ -107,6 +107,14 @@ def label_name(meta):
                    (re.sub(r"\s", "", y) for y in meta["years"])) or "unknown-period"
     return f"tradestat_{meta['flow']}_{meta['basis']}_{yrs}.xlsx"
 
+def _same_report(meta, path):
+    """True if the file at path holds the same data as meta (everything but the generation date matches)."""
+    try:
+        other = read_meta(path)
+    except Exception:
+        return False
+    return all(meta[k] == other.get(k) for k in meta if k != "generated")
+
 def label_file(src, base, manifest, move=False):
     """Label src and place it in <base>/<flow>/ (e.g. data/import, data/export)."""
     src, base = Path(src), Path(base)
@@ -118,12 +126,20 @@ def label_file(src, base, manifest, move=False):
     outdir = base / (meta["flow"] if meta["flow"] in ("import", "export") else "other")
     outdir.mkdir(parents=True, exist_ok=True)
     dest = outdir / label_name(meta)
-    if dest.exists() and dest.resolve() != src.resolve() and filecmp.cmp(src, dest, shallow=False):
-        if move:
-            src.unlink()
-        manifest.append(dict(original=src.name, labelled=dest.name, **meta))
-        print(f"  {src.name}  ==  {dest.name} (identical, skipped)")
-        return dest
+    if dest.exists() and dest.resolve() != src.resolve():
+        if filecmp.cmp(src, dest, shallow=False):
+            if move:
+                src.unlink()
+            manifest.append(dict(original=src.name, labelled=dest.name, **meta))
+            print(f"  {src.name}  ==  {dest.name} (identical, skipped)")
+            return dest
+        # Re-downloads are never byte-identical (generation date, zip timestamps), so compare the data
+        if _same_report(meta, dest):
+            (shutil.move if move else shutil.copy2)(src, dest)
+            manifest.append(dict(original=src.name, labelled=dest.name, **meta))
+            print(f"  {src.name}  ->  {dest.name} (same data, replaced)")
+            return dest
+        print(f"  ! {dest.name} already exists with different data (revised figures?); keeping both")
     k = 2
     while dest.exists() and dest.resolve() != src.resolve():
         dest = outdir / f"{label_name(meta)[:-5]}_v{k}.xlsx"; k += 1
