@@ -22,6 +22,7 @@ not from the original file name, so mislabelled downloads still come out right.
 """
 import argparse, csv, filecmp, json, re, shutil, sys, time
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]   # project root, so paths do not depend on the working directory
 DEFAULT_OUT = str(ROOT / "data" / "raw")
@@ -52,7 +53,7 @@ UNIT = "US $ Million"
 def _slug(s):
     return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
 
-def read_meta(path):
+def read_meta(path) -> dict[str, Any]:
     """Pull flow, basis, years, HS digits, row count and totals out of a TradeStat xlsx."""
     import openpyxl
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
