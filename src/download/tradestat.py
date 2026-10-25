@@ -10,7 +10,8 @@ Typical run:
     python src/download/tradestat.py label data/raw/import   # label files you already have
     python src/download/tradestat.py auto                    # download FLOWS x YEARS
 
-Commands (paths are relative to the project root; the script works from any directory):
+Commands (the default output data/raw is always under the project root;
+a folder you pass yourself is relative to where you run the script):
     auto    [-o data/raw]                  # loop over FLOWS x YEARS using the form config below
     label   folder [-o data/raw] [--copy]  # label xlsx files you already have (moved unless --copy)
     assist  [-o data/raw]                  # fallback: you submit queries by hand; every download is saved + labelled
