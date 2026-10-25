@@ -9,7 +9,7 @@ Setup (once):
 Commands:
     python tradestat.py inspect                 # dump the query form's fields to form_fields.json
     python tradestat.py assist  [-o data/raw]       # you submit queries by hand; every download is saved + labelled
-    python tradestat.py auto    [-o data/raw]       # loop over FLOWS x YEARS using SELECTORS below (fill in after `inspect`)
+    python tradestat.py auto    [-o data/raw]       # loop over FLOWS x YEARS using the form config below
     python tradestat.py label   folder [-o data/raw] [--copy]  # label xlsx files you already have (moved unless --copy)
 
 Files land in ./data/raw/import and ./data/raw/export (by the flow read from each file);
@@ -26,24 +26,26 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]   # project root, so paths do not depend on the working directory
 DEFAULT_OUT = str(ROOT / "data" / "raw")
 
-START_URL = "https://tradestat.commerce.gov.in/eidb/"   # EIDB landing page; adjust if the site moves
+EIDB = "https://tradestat.commerce.gov.in/eidb/"
+START_URL = EIDB + "commodity_wise_import"   # the bare /eidb/ path returns 404
 
 # ---------------------------------------------------------------- auto mode config
-# Fill these in from form_fields.json (output of `inspect`). Use CSS selectors.
-# Left as None on purpose: I could not inspect the live site when writing this.
-SELECTORS = {
-    "year_select": None,      # e.g. "select[name='ddyear']"
-    "hs_level_select": None,  # e.g. "select[name='ddhscode']"
-    "unit_select": None,      # e.g. "select[name='ddunit']"
-    "submit_button": None,    # e.g. "input[type='submit']"
-    "download_button": None,  # the link/button that produces the .xlsx
+# Taken from the live commodity-wise forms (Oct 2026). The import and export forms
+# name their fields differently, so each flow carries its own selectors.
+FLOWS = {
+    "import": dict(url=EIDB + "commodity_wise_import",
+                   year="select[name='Eidb_YearCwi']",
+                   hs_level="select[name='Eidb_ComLevelCwi']",
+                   unit="select[name='Eidb_ReportCwi']"),
+    "export": dict(url=EIDB + "commodity_wise_export",
+                   year="select[name='EidbYearCwe']",
+                   hs_level="select[name='EidbComLevelCwe']",
+                   unit="select[name='Eidb_ReportCwe']"),
 }
-FLOWS = {  # label -> page URL (find each URL via `inspect` / by clicking through the site)
-    # "import": "https://tradestat.commerce.gov.in/eidb/icomq.asp",
-    # "export": "https://tradestat.commerce.gov.in/eidb/ecomq.asp",
-}
-YEARS = ["2023-2024", "2024-2025", "2025-2026"]  # option values/labels as the dropdown shows them
-HS_LEVEL = "8"     # 8-digit
+SUBMIT = "form button[type='submit']:visible"   # the form has a second, hidden submit button
+DOWNLOAD = "button.buttons-excel"                # DataTables Excel button on the results page
+YEARS = ["2023-2024", "2024-2025", "2025-2026"]  # dropdown labels; each report also includes the year before
+HS_LEVEL = "8 digit Level"
 UNIT = "US $ Million"
 
 # ---------------------------------------------------------------- labelling
@@ -196,26 +198,23 @@ def cmd_assist(a):
             write_manifest(man, raw)  # always log what was downloaded, even on Ctrl+C
 
 def cmd_auto(a):
-    missing = [k for k, v in SELECTORS.items() if not v]
-    if missing or not FLOWS:
-        sys.exit(f"Fill in SELECTORS ({', '.join(missing)}) and FLOWS at the top of this file first. Run `inspect` to find them.")
     raw, man, failed = Path(a.out), [], []
     try:
         with _pw()() as p:
             b = p.chromium.launch(headless=False)
             ctx = b.new_context(accept_downloads=True)
             pg = ctx.new_page()
-            for flow, url in FLOWS.items():
+            for flow, form in FLOWS.items():
                 for y in YEARS:
                     try:
-                        pg.goto(url)
-                        pg.select_option(SELECTORS["year_select"], label=y)
-                        pg.select_option(SELECTORS["hs_level_select"], label=HS_LEVEL)
-                        pg.select_option(SELECTORS["unit_select"], label=UNIT)
-                        pg.click(SELECTORS["submit_button"])
-                        pg.wait_for_load_state("networkidle")
+                        pg.goto(form["url"])
+                        pg.select_option(form["year"], label=y)
+                        pg.select_option(form["hs_level"], label=HS_LEVEL)
+                        pg.select_option(form["unit"], label=UNIT)
+                        pg.click(SUBMIT)
+                        pg.wait_for_load_state("networkidle", timeout=180_000)  # 8-digit reports are slow
                         with pg.expect_download(timeout=120_000) as d:
-                            pg.click(SELECTORS["download_button"])
+                            pg.click(DOWNLOAD)
                         _save_download(d.value, raw, man)
                     except Exception as e:  # one bad query should not abort the whole run
                         print(f"  ! {flow} {y} failed: {e}")
