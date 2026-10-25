@@ -1,0 +1,4 @@
+original,labelled,flow,basis,years,hs_digits,rows,total_y1,total_y2,gap_y1,gap_y2,generated,unit
+TradeStat-Eidb-Import-Commodity-wise-2023-24.xlsx,tradestat_import_commodity-wise_FY2022-23_FY2023-24.xlsx,import,commodity-wise,"['2022-2023', '2023-2024']",8,10769,715968.9,673991.95,0.54,0.4,25/10/2026,usd-million
+TradeStat-Eidb-Import-Commodity-wise-2024-25.xlsx,tradestat_import_commodity-wise_FY2023-24_FY2024-25.xlsx,import,commodity-wise,"['2023-2024', '2024-2025']",8,10681,673991.95,721200.22,0.4,0.54,25/10/2026,usd-million
+TradeStat-Eidb-Import-Commodity-wise-2025-26.xlsx,tradestat_import_commodity-wise_FY2024-25_FY2025-26.xlsx,import,commodity-wise,"['2024-2025', '2025-2026']",8,10850,721200.22,775713.17,0.54,1.02,16/08/2026,usd-million
