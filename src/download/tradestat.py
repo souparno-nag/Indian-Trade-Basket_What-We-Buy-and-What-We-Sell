@@ -45,7 +45,7 @@ FLOWS = {
 }
 SUBMIT = "form button[type='submit']:visible"   # the form has a second, hidden submit button
 DOWNLOAD = "button.buttons-excel"                # DataTables Excel button on the results page
-YEARS = ["2023-2024", "2024-2025", "2025-2026"]  # dropdown labels; each report also includes the year before
+YEARS = ["2018-2019", "2019-2020", "2020-2021", "2021-2022", "2022-2023", "2023-2024", "2024-2025", "2025-2026"]  # dropdown labels; each report also includes the year before
 HS_LEVEL = "8 digit Level"
 UNIT = "US $ Million"
 
