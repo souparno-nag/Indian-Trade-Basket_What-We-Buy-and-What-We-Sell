@@ -10,7 +10,7 @@ Commands:
     python tradestat.py inspect                 # dump the query form's fields to form_fields.json
     python tradestat.py assist  [-o data/raw]       # you submit queries by hand; every download is saved + labelled
     python tradestat.py auto    [-o data/raw]       # loop over FLOWS x YEARS using SELECTORS below (fill in after `inspect`)
-    python tradestat.py label   folder [-o data/raw] [--move]  # label xlsx files you already have (copied unless --move)
+    python tradestat.py label   folder [-o data/raw] [--copy]  # label xlsx files you already have (moved unless --copy)
 
 Files land in ./data/raw/import and ./data/raw/export (by the flow read from each file);
 data/raw/manifest.csv logs every file. Downloads pass through data/raw/_incoming first.
@@ -130,7 +130,7 @@ def cmd_label(a):
     for f in sorted(Path(a.folder).glob("*.xlsx")):
         if f.name.startswith("~$"):
             continue
-        label_file(f, out, man, move=a.move)
+        label_file(f, out, man, move=not a.copy)
     write_manifest(man, out)
 
 # ---------------------------------------------------------------- browser modes
@@ -222,5 +222,5 @@ if __name__ == "__main__":
     sp = ap.add_subparsers(dest="cmd", required=True)
     for name, fn in [("inspect", cmd_inspect), ("assist", cmd_assist), ("auto", cmd_auto)]:
         s = sp.add_parser(name); s.add_argument("-o", "--out", default=DEFAULT_OUT); s.add_argument("--url"); s.set_defaults(fn=fn)
-    s = sp.add_parser("label"); s.add_argument("folder"); s.add_argument("-o", "--out", default=DEFAULT_OUT); s.add_argument("--move", action="store_true"); s.set_defaults(fn=cmd_label)
+    s = sp.add_parser("label"); s.add_argument("folder"); s.add_argument("-o", "--out", default=DEFAULT_OUT); s.add_argument("--copy", action="store_true", help="keep the originals instead of moving them"); s.set_defaults(fn=cmd_label)
     a = ap.parse_args(); a.fn(a)
