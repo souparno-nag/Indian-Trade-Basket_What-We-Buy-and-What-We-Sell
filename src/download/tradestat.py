@@ -23,6 +23,9 @@ not from the original file name, so mislabelled downloads still come out right.
 import argparse, csv, filecmp, json, re, shutil, sys, time
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[2]   # project root, so paths do not depend on the working directory
+DEFAULT_OUT = str(ROOT / "data" / "raw")
+
 START_URL = "https://tradestat.commerce.gov.in/eidb/"   # EIDB landing page; adjust if the site moves
 
 # ---------------------------------------------------------------- auto mode config
@@ -147,8 +150,8 @@ def cmd_inspect(a):
         fields = pg.evaluate("""() => [...document.querySelectorAll('select,input,button,a[href*=xls],a[href*=download]')].map(e => ({
             tag: e.tagName, type: e.type||'', name: e.name||'', id: e.id||'', text: (e.innerText||e.value||'').trim().slice(0,60),
             href: e.href||'', options: e.tagName==='SELECT' ? [...e.options].map(o=>[o.value,o.text]) : undefined}))""")
-        Path("form_fields.json").write_text(json.dumps({"url": pg.url, "fields": fields}, indent=2))
-        print(f"saved form_fields.json ({len(fields)} controls) for {pg.url}")
+        (ROOT / "data" / "form_fields.json").write_text(json.dumps({"url": pg.url, "fields": fields}, indent=2))
+        print(f"saved data/form_fields.json ({len(fields)} controls) for {pg.url}")
         b.close()
 
 def _save_download(dl, base, man):
@@ -207,6 +210,6 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sp = ap.add_subparsers(dest="cmd", required=True)
     for name, fn in [("inspect", cmd_inspect), ("assist", cmd_assist), ("auto", cmd_auto)]:
-        s = sp.add_parser(name); s.add_argument("-o", "--out", default="data/raw"); s.add_argument("--url"); s.set_defaults(fn=fn)
-    s = sp.add_parser("label"); s.add_argument("folder"); s.add_argument("-o", "--out", default="data/raw"); s.add_argument("--move", action="store_true"); s.set_defaults(fn=cmd_label)
+        s = sp.add_parser(name); s.add_argument("-o", "--out", default=DEFAULT_OUT); s.add_argument("--url"); s.set_defaults(fn=fn)
+    s = sp.add_parser("label"); s.add_argument("folder"); s.add_argument("-o", "--out", default=DEFAULT_OUT); s.add_argument("--move", action="store_true"); s.set_defaults(fn=cmd_label)
     a = ap.parse_args(); a.fn(a)
