@@ -14,6 +14,12 @@ Bank). Workflow: download → clean → EDA → statistical analysis → report.
   Numbered review items get done one at a time ("do edit N").
 - Verify claims against the data or site before stating them. Run tests and checks
   before committing.
+- **Notebook first, then `src/`.** Prototype every step in a notebook on the real data.
+  Once the user has checked it, port the logic into `src/trade/` with tests. Then change
+  the notebook cells to call the package, so no logic is duplicated. Commit each stage.
+- **The user runs notebook code.** Give notebook cells as code blocks in the terminal.
+  The user pastes and runs them. Don't create or execute notebooks yourself unless
+  asked.
 
 ## Environment
 
