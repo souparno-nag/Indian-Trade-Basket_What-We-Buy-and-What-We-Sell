@@ -8,3 +8,5 @@ seaborn
 plotly
 jupyterlab
 playwright
+pyarrow
+pytest
